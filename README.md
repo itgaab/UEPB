@@ -2,19 +2,21 @@
 
 App em Streamlit que ajuda a descobrir qual curso de graduação da **UEPB** combina com você:
 
-- **Teste de 9 perguntas** que gera um ranking de compatibilidade com os cursos.
+- **Tela única por toque**: a pessoa marca de 3 a 5 interesses (botões com emoji), escolhe a cidade se quiser e vê os 5 cursos mais compatíveis na hora, com uma linha de "por que combina". O ranking é calculado localmente, sem gastar API.
+- **Refinar (opcional)**: o botão "Quero um resultado mais preciso" abre 3 perguntas rápidas que ajustam o ranking.
+- **Frase livre (opcional)**: a pessoa conta em uma frase o que quer e o VANDER IA converte em interesses (chamada curta e barata; sem IA, usa palavras-chave).
 - **Catálogo completo**: 38 cursos em 64 ofertas nos 8 campi, com o que cada curso faz, o que se estuda, onde atuar e turnos.
 - **Chat com o VANDER IA** para explicar o resultado e tirar dúvidas.
 
-O teste e o catálogo funcionam **sem nenhuma chave**. Só o chat precisa de uma IA conectada.
+O resultado e o catálogo funcionam **sem nenhuma chave**. A IA só entra no chat e na leitura da frase livre.
 
 ## Estrutura
 
 ```
-app.py              interface (abas Teste, Cursos da UEPB, VANDER IA)
-orientador.py       perguntas e cálculo de compatibilidade
+app.py              interface (páginas Descobrir, Cursos, VANDER IA)
+orientador.py       interesses, perguntas de refinamento e cálculo de compatibilidade
 cursos_uepb.py      catálogo de cursos (edite aqui para corrigir ou adicionar cursos)
-agente.py           conexão com o VANDER IA (e plano B com Gemini)
+agente.py           conexão com o VANDER IA (chat e leitura da frase livre; plano B com Gemini)
 assets/             logo, mascote e avatar
 .streamlit/config.toml   cores do tema
 ```
@@ -60,3 +62,6 @@ streamlit run app.py
   (https://uepb.edu.br/prograd/ensino/cursos-de-graduacao-2/). Turnos e ofertas mudam: confirme no site da UEPB.
 - As descrições dos cursos são resumos gerais, não o projeto pedagógico oficial.
 - A compatibilidade é uma estimativa por perfil (interesses, preferências e valores), uma orientação inicial e não uma sentença.
+
+
+Para mudar os botões de interesse (emoji, nome, pesos e cursos afins), edite `INTERESSES` em `orientador.py`.
