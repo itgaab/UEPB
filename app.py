@@ -12,20 +12,27 @@ import agente
 from compartilhar import gerar_imagem
 from cursos_uepb import AREAS, CAMPUS, CIDADES, CURSOS, GRAUS
 from dia_a_dia import DIA_A_DIA
-from orientador import (
-    N_BASE,
-    chave,
-    INTERESSES,
-    MAX_INTERESSES,
-    MIN_RECOMENDADO,
-    REFINAR,
-    interpretar_por_palavras,
-    motivo,
-    ranking,
-    resumo_refino,
-    rotulo_interesse,
-    vetor_total,
-)
+import traceback
+
+try:
+    from orientador import (
+        N_BASE,
+        chave,
+        INTERESSES,
+        MAX_INTERESSES,
+        MIN_RECOMENDADO,
+        REFINAR,
+        interpretar_por_palavras,
+        motivo,
+        ranking,
+        resumo_refino,
+        rotulo_interesse,
+        vetor_total,
+    )
+except Exception:
+    st.error("Falha ao importar orientador.py")
+    st.code(traceback.format_exc())
+    st.stop()
 
 ASSETS = Path(__file__).parent / "assets"
 AVATAR = str(ASSETS / "avatar.png")
