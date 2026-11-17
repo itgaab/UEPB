@@ -35,96 +35,112 @@ MIN_RECOMENDADO = 3
 INTERESSES = {
     "computadores": {
         "emoji": "💻", "rotulo": "Computadores",
+        "cor": "#2563EB",
         "vetor": {"R": 2, "I": 2, "C": 1},
         "afins": ['Ciência da Computação', 'Tecnologia em Análise e Desenvolvimento de Sistemas', 'Tecnologia em Ciência de Dados', 'Estatística e Ciência de Dados'],
         "palavras": ["comput", "program", "tecnolog", "jogo", "game", "software", "sistema", "internet", "aplicativo", "site", "robo", "inteligencia artificial"],
     },
     "cuidar": {
         "emoji": "🩺", "rotulo": "Cuidar de pessoas",
+        "cor": "#E11D48",
         "vetor": {"H": 3, "S": 2},
         "afins": ['Enfermagem', 'Fisioterapia', 'Psicologia', 'Odontologia', 'Farmácia'],
         "palavras": ["saude", "cuidar", "enferm", "medic", "hospital", "paciente", "psicolog", "terapia", "clinica", "dentista", "farmac"],
     },
     "natureza": {
         "emoji": "🌱", "rotulo": "Natureza",
+        "cor": "#16A34A",
         "vetor": {"N": 3, "R": 1},
         "afins": ['Agronomia', 'Agroecologia', 'Engenharia Sanitária e Ambiental', 'Ciências Biológicas'],
         "palavras": ["natureza", "planta", "agricult", "ambient", "sustent", "ecolog", "floresta", "solo", "clima", "agro"],
     },
     "ensinar": {
         "emoji": "📚", "rotulo": "Ensinar",
+        "cor": "#14B8A6",
         "vetor": {"S": 3, "A": 1},
         "afins": [],
         "palavras": ["ensin", "professor", "escola", "educa", "aula", "docen", "pedagog"],
     },
     "leis": {
         "emoji": "⚖️", "rotulo": "Leis e justiça",
+        "cor": "#6D28D9",
         "vetor": {"E": 2, "C": 2, "S": 1},
         "afins": ['Direito'],
         "palavras": ["lei", "direito", "justica", "advog", "juiz", "promotor", "concurso", "tribunal"],
     },
     "numeros": {
         "emoji": "📊", "rotulo": "Números e dados",
+        "cor": "#0891B2",
         "vetor": {"C": 3, "I": 2},
         "afins": ['Estatística', 'Estatística e Ciência de Dados', 'Ciências Contábeis', 'Tecnologia em Ciência de Dados', 'Matemática'],
         "palavras": ["numero", "matematica", "estatistic", "dados", "calcul", "financ", "contab", "analis", "grafico"],
     },
     "escrever": {
         "emoji": "✍️", "rotulo": "Escrever e criar",
+        "cor": "#C026D3",
         "vetor": {"A": 3, "I": 1},
         "afins": ['Jornalismo', 'Letras Português'],
         "palavras": ["escrev", "redacao", "livro", "literat", "jornal", "texto", "roteiro", "poesia", "conteudo", "ler "],
     },
     "construir": {
         "emoji": "🔧", "rotulo": "Construir coisas",
+        "cor": "#EA580C",
         "vetor": {"R": 3, "I": 1},
         "afins": ['Engenharia Civil', 'Tecnologia em Sistemas de Energias Renováveis', 'Química Industrial'],
         "palavras": ["constru", "engenh", "obra", "maquina", "mecanic", "eletric", "montar", "consertar", "projetar"],
     },
     "ciencia": {
         "emoji": "🔬", "rotulo": "Ciência e pesquisa",
+        "cor": "#4338CA",
         "vetor": {"I": 3, "R": 1},
         "afins": ['Física', 'Química', 'Ciências Biológicas', 'Química Industrial'],
         "palavras": ["ciencia", "pesquis", "laborat", "quimic", "fisic", "biolog", "descobr", "cientist", "experiment"],
     },
     "esporte": {
         "emoji": "🏃", "rotulo": "Esporte e corpo",
+        "cor": "#DC2626",
         "vetor": {"H": 3, "S": 1, "R": 1},
         "afins": ['Educação Física', 'Fisioterapia'],
         "palavras": ["esport", "academia", "atlet", "futebol", "treino", "corpo", "fisioter", "corrida"],
     },
     "negocios": {
         "emoji": "💼", "rotulo": "Negócios e dinheiro",
+        "cor": "#CA8A04",
         "vetor": {"E": 3, "C": 2},
         "afins": ['Administração', 'Ciências Contábeis'],
         "palavras": ["negocio", "empreend", "empresa", "vend", "dinheiro", "gestao", "administr", "lider", "chefe", "marketing"],
     },
     "arte": {
         "emoji": "🎨", "rotulo": "Arte e design",
+        "cor": "#DB2777",
         "vetor": {"A": 3, "E": 1},
         "afins": ['Jornalismo'],
         "palavras": ["arte", "desenh", "design", "pintur", "music", "teatro", "cinema", "fotograf", "criativ"],
     },
     "animais": {
         "emoji": "🐾", "rotulo": "Animais e campo",
+        "cor": "#65A30D",
         "vetor": {"N": 2, "H": 1, "R": 1},
         "afins": ['Agronomia', 'Agroecologia', 'Ciências Biológicas'],
         "palavras": ["animal", "pet", "veterin", "fazenda", "cavalo", "gado", "bicho", "rural", "campo"],
     },
     "comunicar": {
         "emoji": "🎤", "rotulo": "Comunicar e falar",
+        "cor": "#0369A1",
         "vetor": {"A": 2, "E": 2, "S": 1},
         "afins": ['Jornalismo', 'Relações Internacionais'],
         "palavras": ["comunic", "apresent", "palestr", "entrevist", "influenc", "falar", "midia", "radio", "podcast", "reporter"],
     },
     "sociedade": {
         "emoji": "🌍", "rotulo": "Sociedade e história",
+        "cor": "#B45309",
         "vetor": {"S": 2, "I": 2, "A": 1},
         "afins": ['História', 'Sociologia', 'Geografia', 'Serviço Social', 'Filosofia'],
         "palavras": ["sociedade", "social", "historia", "politica", "desigualdade", "comunidade", "direitos humanos", "filosof", "geografia", "cultura"],
     },
     "idiomas": {
         "emoji": "🗣️", "rotulo": "Idiomas e culturas",
+        "cor": "#0F766E",
         "vetor": {"A": 2, "S": 1, "E": 1},
         "afins": ['Letras Inglês', 'Letras Espanhol', 'Relações Internacionais'],
         "palavras": ["idioma", "ingles", "espanhol", "lingua", "traduc", "viajar", "intercambio", "estrangeir"],
@@ -218,9 +234,10 @@ def ranking(vetor: dict, interesses=(), cidades=None, so_cidades=False):
         # Cosseno ao quadrado: separa melhor os cursos e quase nunca chega a 100%.
         pct = 100.0 * sim * sim
         pct += min(BONUS_AFIM_MAX, BONUS_AFIM * sum(_afim(c, i) for i in interesses))
-        pct = min(99.0, pct)
         if nas_cidades:
-            pct = min(99.0, pct + 2)
+            pct += 2
+        # Escala 0,9 para o topo não ficar todo em 99% e os cursos continuarem distinguíveis.
+        pct = min(99.0, pct * 0.9)
         resultado.append({**c, "afinidade": round(pct), "nas_cidades": nas_cidades})
     resultado.sort(key=lambda x: x["afinidade"], reverse=True)
     return resultado
