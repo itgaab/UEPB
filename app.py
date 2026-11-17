@@ -1,7 +1,6 @@
 import base64
 import html as _html
 import io
-import math
 import re
 from pathlib import Path
 
@@ -11,8 +10,6 @@ import agente
 from compartilhar import gerar_imagem
 from cursos_uepb import AREAS, CAMPUS, CIDADES, CURSOS, GRAUS
 from orientador import (
-    DIM_NOMES,
-    DIMS,
     INTERESSES,
     MAX_INTERESSES,
     MIN_RECOMENDADO,
@@ -58,10 +55,6 @@ AREA_ESTILO = {
     "Linguagens e Comunicação": ("✍️", "#DB2777"),
     "Educação e Licenciaturas": ("🎓", "#0D9488"),
 }
-
-# Nome curto de cada dimensão para o gráfico de perfil.
-DIM_CURTO = {"R": "Prático", "I": "Pesquisa", "A": "Criativo", "S": "Ajudar", "E": "Liderar", "C": "Dados", "H": "Saúde", "N": "Natureza"}
-
 
 def estilo_area(area: str):
     return AREA_ESTILO.get(area, ("🎓", "#1F6BFF"))
@@ -191,11 +184,6 @@ div[data-testid="stButtonGroup"] button { transition:transform .12s ease, box-sh
 .sec img { height:26px; width:auto; }
 .vazio { background:#fff; border:2px dashed #C9D6EE; border-radius:24px; padding:34px 22px; text-align:center; color:var(--suave); }
 .vazio .disp { font-size:1.35rem; font-weight:800; color:var(--ink); margin-bottom:.3rem; }
-.perfil { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.perfil svg { flex:none; width:250px; max-width:100%; height:auto; }
-.perfil .tags { flex:1; min-width:150px; }
-.perfil .tags div.t { display:flex; align-items:center; gap:8px; font-weight:700; margin:0 0 10px 0; }
-.perfil .tags div.t i { width:12px; height:12px; border-radius:4px; background:var(--azul); display:inline-block; }
 .talvez { display:flex; flex-wrap:wrap; gap:8px; margin:.2rem 0 1rem 0; }
 .talvez span { background:#fff; border:1px solid var(--linha); border-radius:14px; padding:8px 12px; font-weight:600; font-size:.9rem; }
 .talvez span em { font-style:normal; color:var(--suave); font-weight:500; margin-left:6px; }
@@ -344,37 +332,6 @@ def mostrar_curso(c: dict, destaque: dict | None = None):
     for cidade, turno in c["campi"].items():
         marca = " ✅" if destaque and cidade in destaque else ""
         st.markdown(f"- {cidade} ({CAMPUS[cidade]}): {turno}{marca}")
-
-
-def radar_svg(v: dict) -> str:
-    """Gráfico de radar do perfil (8 dimensões), em SVG."""
-    cx = cy = 130
-    raio = 82
-    mx = max(v.values()) or 1
-    ang = [-math.pi / 2 + k * 2 * math.pi / len(DIMS) for k in range(len(DIMS))]
-
-    def pt(a, r):
-        return cx + r * math.cos(a), cy + r * math.sin(a)
-
-    partes = []
-    for nivel in (0.33, 0.66, 1.0):
-        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in (pt(a, raio * nivel) for a in ang))
-        partes.append(f'<polygon points="{pts}" fill="none" stroke="#DCE5F5" stroke-width="1"/>')
-    for a in ang:
-        x, y = pt(a, raio)
-        partes.append(f'<line x1="{cx}" y1="{cy}" x2="{x:.1f}" y2="{y:.1f}" stroke="#E6ECF7" stroke-width="1"/>')
-    pts = [pt(a, raio * max(0.1, v[d] / mx)) for a, d in zip(ang, DIMS)]
-    poli = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-    partes.append(f'<polygon points="{poli}" fill="rgba(31,107,255,.22)" stroke="#1F6BFF" stroke-width="2.5" stroke-linejoin="round"/>')
-    for x, y in pts:
-        partes.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="#1F6BFF" stroke="#fff" stroke-width="1.5"/>')
-    for a, d in zip(ang, DIMS):
-        x, y = pt(a, raio + 20)
-        ancora = "middle" if abs(math.cos(a)) < 0.3 else ("start" if math.cos(a) > 0 else "end")
-        partes.append(
-            f'<text x="{x:.1f}" y="{y + 4:.1f}" text-anchor="{ancora}" font-size="11.5" font-weight="700" fill="#33466B">{DIM_CURTO[d]}</text>'
-        )
-    return f'<svg viewBox="-22 0 304 260" role="img" aria-label="Gráfico do seu perfil">{"".join(partes)}</svg>'
 
 
 # ----------------------------------------------------------------------------
@@ -561,18 +518,6 @@ if pagina == PAG_DESCOBRIR:
                 html('<div class="sec" style="font-size:1.15rem;margin-top:.6rem">Você também pode gostar</div>')
                 chips = "".join(f'<span>{esc(c["nome"])}<em>{c["afinidade"]}%</em></span>' for c in extras)
                 html(f'<div class="talvez">{chips}</div>')
-
-            # ----- Perfil -----
-            with st.container(key="bloco_perfil"):
-                top3 = sorted(vetor.items(), key=lambda kv: kv[1], reverse=True)[:3]
-                tags = "".join(f'<div class="t"><i></i>{esc(DIM_NOMES[d])}</div>' for d, pts in top3 if pts > 0)
-                html(
-                    f"""
-                    <div class="sec" style="font-size:1.15rem">Seu perfil</div>
-                    <div class="perfil">{radar_svg(vetor)}<div class="tags">{tags}
-                    <div class="aviso">O desenho mostra o quanto cada lado pesou nas suas escolhas.</div></div></div>
-                    """
-                )
 
             # ----- Refinar (opcional) -----
             with st.container(key="bloco_refinar"):
