@@ -65,3 +65,24 @@ streamlit run app.py
 
 
 Para mudar os botões de interesse (emoji, nome, pesos e cursos afins), edite `INTERESSES` em `orientador.py`.
+
+
+## Novidades da versão com mais opções
+
+- **28 interesses:** 16 aparecem sempre e 12 ficam em "Ver mais interesses". Para mudar emoji, nome, cor, pesos e cursos afins, edite `INTERESSES` em `orientador.py`.
+- **Um dia na vida:** rotina típica de cada curso, em `dia_a_dia.py` (um texto "aluno" e um "prof" por curso).
+- **Comparar 2 cursos** e **Mapa dos campi:** abas dentro de "Cursos".
+- **Modo arrastar:** 👍 / 🤔 / 👎 sobre os 10 melhores cursos. Curtir aproxima o perfil do curso e descartar tira o curso do resultado.
+- **Link do processo seletivo:** a constante `LINK_UEPB` em `app.py` aponta para o site da UEPB. Troque pelo endereço exato da página de inscrição.
+- **Dados opcionais por curso:** edite `extras.json` para mostrar nota de corte, mercado de trabalho, depoimento real ou um link próprio. Só aparece o que você preencher. Exemplo:
+
+```json
+{
+  "Ciência da Computação|Bacharelado": {
+    "nota_corte": "texto com a nota e o ano, citando a fonte",
+    "mercado": "texto com dados de uma fonte oficial",
+    "depoimento": {"texto": "frase autorizada pela pessoa", "autor": "Nome, egresso 2024"},
+    "link": "https://..."
+  }
+}
+```

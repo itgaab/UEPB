@@ -1,15 +1,20 @@
 import base64
 import html as _html
 import io
+import json
 import re
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 import agente
 from compartilhar import gerar_imagem
 from cursos_uepb import AREAS, CAMPUS, CIDADES, CURSOS, GRAUS
+from dia_a_dia import DIA_A_DIA
 from orientador import (
+    N_BASE,
+    chave,
     INTERESSES,
     MAX_INTERESSES,
     MIN_RECOMENDADO,
@@ -44,6 +49,21 @@ PAGINAS = [PAG_DESCOBRIR, PAG_CURSOS, PAG_CHAT]
 LIMITE_MSGS = 20  # protege o seu crédito: máximo de perguntas por sessão no chat
 LIMITE_FRASES = 5  # máximo de frases livres interpretadas pela IA por sessão (depois usa palavras-chave)
 TOP_N = 5
+LINK_UEPB = "https://uepb.edu.br"  # troque aqui se quiser apontar para a página exata do processo seletivo
+N_FILA = 10  # quantos cursos aparecem no modo arrastar
+
+# Coordenadas das cidades dos campi (para o mapa).
+COORDS = {
+    "Campina Grande": (-7.2306, -35.8811),
+    "Lagoa Seca": (-7.1708, -35.8575),
+    "Guarabira": (-6.8547, -35.4903),
+    "Catolé do Rocha": (-6.3453, -37.7458),
+    "João Pessoa": (-7.1195, -34.8450),
+    "Monteiro": (-7.8883, -37.1200),
+    "Patos": (-7.0246, -37.2800),
+    "Araruna": (-6.5528, -35.7408),
+}
+CURSO_POR_CHAVE = {chave(c): c for c in CURSOS}
 
 # Emoji e cor de cada área de conhecimento (usados nos cartões de curso).
 AREA_ESTILO = {
@@ -79,6 +99,17 @@ def html(bloco: str):
     st.markdown("\n".join(l.strip() for l in bloco.strip().splitlines() if l.strip()), unsafe_allow_html=True)
 
 
+@st.cache_data
+def carregar_extras() -> dict:
+    """Dados opcionais por curso (nota de corte, mercado, depoimento, link) vindos de extras.json."""
+    try:
+        with open(Path(__file__).parent / "extras.json", encoding="utf-8") as f:
+            dados = json.load(f)
+        return dados if isinstance(dados, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
 @st.cache_resource
 def img64(nome: str, lado: int) -> str:
     """Imagem de assets/ reduzida e em base64, para usar dentro de HTML."""
@@ -103,7 +134,7 @@ h1, h2, h3, .disp { font-family:'Bricolage Grotesque','Figtree',system-ui,sans-s
 .stApp { background:var(--bg); }
 header[data-testid="stHeader"] { background:transparent; }
 footer { visibility:hidden; }
-.block-container { max-width:1180px; padding-top:1.1rem; padding-bottom:4rem; }
+.block-container { max-width:1180px; padding-top:4rem; padding-bottom:5rem; }
 
 /* ---------- Hero ---------- */
 .hero { position:relative; overflow:hidden; display:flex; align-items:center; gap:18px; padding:30px 34px; border-radius:28px;
@@ -212,6 +243,14 @@ textarea { border-radius:14px !important; }
     background:linear-gradient(135deg,#0B2A55,#1F4FBF); color:#fff !important; font-weight:700; white-space:nowrap; padding:12px 22px; border-radius:999px;
     box-shadow:0 14px 30px -10px rgba(11,42,85,.85); border:2px solid rgba(255,255,255,.25); }
 }
+/* ---------- Modo arrastar, link e comparação ---------- */
+[class*="st-key-bloco_arrastar"] { background:linear-gradient(160deg,#FFF8E6,#fff 55%); border:2px solid var(--ouro); border-radius:24px; padding:18px 20px; box-shadow:0 18px 40px -22px rgba(255,178,36,.8); }
+.linkbtn { display:block; text-align:center; text-decoration:none !important; font-weight:700; color:var(--azul) !important; border:1.5px solid #CBD8EF; border-radius:14px; padding:.6rem 1rem; margin-top:.6rem; background:#fff; }
+.linkbtn:hover { border-color:var(--azul); background:#F3F8FF; }
+.dia { background:#F3F6FC; border-radius:16px; padding:12px 14px; margin:.4rem 0 .6rem 0; font-size:.93rem; line-height:1.5; color:#33466B; }
+.dia p { margin:0 0 .45rem 0; } .dia p:last-child { margin:0; }
+.dia b { color:var(--ink); }
+.extra { border-left:4px solid var(--ouro); padding:2px 12px; margin:.5rem 0; color:#33466B; }
 @media (prefers-reduced-motion: reduce){ * { transition:none !important; } }
 </style>
 """
@@ -234,6 +273,10 @@ ESTADO_INICIAL = {
     "so_cidades": True,
     "refino": {},
     "refinando": False,
+    "mais_interesses": False,
+    "votos": {},
+    "arrastar": False,
+    "fila": [],
     "texto_usado": "",
     "texto_ids": [],
     "chamadas_frase": 0,
@@ -259,13 +302,36 @@ def ir_para(pagina: str):
 
 
 def recomecar():
-    for k in ("interesses", "cidades", "so_cidades", "refino", "refinando", "texto_usado", "texto_ids"):
+    for k in ("interesses", "cidades", "so_cidades", "refino", "refinando", "mais_interesses", "votos", "arrastar", "fila", "texto_usado", "texto_ids"):
         v = ESTADO_INICIAL[k]
         st.session_state[k] = type(v)(v) if isinstance(v, (list, dict)) else v
     st.session_state.chat = [{"role": "assistant", "content": SAUDACAO, "saudacao": True}]
     for k in ("w_interesses", "w_cidades", "w_so_cidades"):
         st.session_state.pop(k, None)
     st.session_state.pagina = PAG_DESCOBRIR
+
+
+def alternar_mais():
+    st.session_state.mais_interesses = not st.session_state.mais_interesses
+
+
+def iniciar_arrastar():
+    """Congela a fila com os melhores cursos do momento, para a ordem não mudar a cada voto."""
+    st.session_state.fila = [chave(c) for c in resultado[:N_FILA] if chave(c) not in st.session_state.votos]
+    st.session_state.arrastar = True
+
+
+def votar(k: str, valor: int):
+    st.session_state.votos[k] = valor
+
+
+def parar_arrastar():
+    st.session_state.arrastar = False
+
+
+def limpar_votos():
+    st.session_state.votos = {}
+    st.session_state.arrastar = False
 
 
 def interpretar_frase(texto: str) -> list[str]:
@@ -293,10 +359,10 @@ def todos_interesses() -> list[str]:
 
 ids_total = todos_interesses()
 excesso = len(st.session_state.interesses) > MAX_INTERESSES
-vetor = vetor_total(ids_total, st.session_state.refino)
+vetor = vetor_total(ids_total, st.session_state.refino, st.session_state.votos)
 cidades_sel = st.session_state.cidades
 filtrar = bool(cidades_sel) and st.session_state.so_cidades
-resultado = [] if (not ids_total or excesso) else ranking(vetor, ids_total, cidades_sel, filtrar)
+resultado = [] if (not ids_total or excesso) else ranking(vetor, ids_total, cidades_sel, filtrar, st.session_state.votos)
 
 
 def contexto_para_ia() -> str:
@@ -309,6 +375,13 @@ def contexto_para_ia() -> str:
             linhas.append("RESPOSTAS DO REFINAMENTO:\n" + resumo_refino(st.session_state.refino))
         if cidades_sel:
             linhas.append("CIDADES ONDE A PESSOA PODE ESTUDAR: " + ", ".join(cidades_sel))
+        if st.session_state.votos:
+            curti = [CURSO_POR_CHAVE[k]["nome"] for k, v in st.session_state.votos.items() if v > 0 and k in CURSO_POR_CHAVE]
+            nao = [CURSO_POR_CHAVE[k]["nome"] for k, v in st.session_state.votos.items() if v < 0 and k in CURSO_POR_CHAVE]
+            if curti:
+                linhas.append("CURSOS QUE A PESSOA CURTIU NO MODO ARRASTAR: " + ", ".join(curti))
+            if nao:
+                linhas.append("CURSOS QUE A PESSOA DESCARTOU: " + ", ".join(nao))
         linhas.append("\nCURSOS MAIS COMPATÍVEIS (compatibilidade calculada pelo app):")
         for c in resultado[:10]:
             linhas.append(f"- {c['nome']} ({c['grau']}): {c['afinidade']}%")
@@ -322,9 +395,18 @@ def contexto_para_ia() -> str:
 
 
 def mostrar_curso(c: dict, destaque: dict | None = None):
-    """Mostra os detalhes de um curso."""
+    """Ficha do curso: o que faz, o que estuda, um dia na vida, onde atuar, onde é oferecido e extras opcionais."""
     st.markdown(f"**O que faz:** {c['faz']}")
     st.markdown(f"**O que você estuda:** {c['estuda']}")
+    dia = DIA_A_DIA.get(chave(c)) or DIA_A_DIA.get(c["nome"])
+    if dia:
+        st.markdown("**Um dia na vida** (rotina típica, varia conforme o campus e o local de trabalho)")
+        html(
+            f"""
+            <div class="dia"><p>🎒 <b>Na graduação:</b> {esc(dia['aluno'])}</p>
+            <p>💼 <b>No trabalho:</b> {esc(dia['prof'])}</p></div>
+            """
+        )
     st.markdown("**Onde você pode atuar:**")
     for item in c["carreiras"]:
         st.markdown(f"- {item}")
@@ -332,6 +414,17 @@ def mostrar_curso(c: dict, destaque: dict | None = None):
     for cidade, turno in c["campi"].items():
         marca = " ✅" if destaque and cidade in destaque else ""
         st.markdown(f"- {cidade} ({CAMPUS[cidade]}): {turno}{marca}")
+    ex = carregar_extras().get(chave(c)) or carregar_extras().get(c["nome"]) or {}
+    if ex.get("nota_corte"):
+        st.markdown(f"**Nota de corte:** {ex['nota_corte']}")
+    if ex.get("mercado"):
+        st.markdown(f"**Mercado de trabalho:** {ex['mercado']}")
+    dep = ex.get("depoimento")
+    if isinstance(dep, dict) and dep.get("texto"):
+        autor = f"<br><small>{esc(dep['autor'])}</small>" if dep.get("autor") else ""
+        html(f'<div class="extra">“{esc(dep["texto"])}”{autor}</div>')
+    link = ex.get("link") or LINK_UEPB
+    html(f'<a class="linkbtn" href="{esc(link)}" target="_blank" rel="noopener">Ver o processo seletivo no site da UEPB ↗</a>')
 
 
 # ----------------------------------------------------------------------------
@@ -404,6 +497,12 @@ if pagina == PAG_DESCOBRIR:
                 blocos = "".join(f'<i class="{"on" if k < n else ""}"></i>' for k in range(MAX_INTERESSES))
                 html(f'<div class="meter">{blocos}<span>{n} de {MAX_INTERESSES}</span></div>')
                 persistente("interesses")
+                if not st.session_state.mais_interesses:
+                    # Os interesses extras só aparecem depois de "Ver mais" (ou se já estiverem marcados).
+                    st.markdown(
+                        f'<style>.st-key-w_interesses button:nth-of-type(n+{N_BASE + 1}):not([data-selected="true"]){{display:none}}</style>',
+                        unsafe_allow_html=True,
+                    )
                 st.pills(
                     "O que você curte?",
                     list(INTERESSES),
@@ -413,6 +512,12 @@ if pagina == PAG_DESCOBRIR:
                     on_change=salvar,
                     args=("interesses",),
                     label_visibility="collapsed",
+                )
+                st.button(
+                    "− Mostrar menos" if st.session_state.mais_interesses else f"＋ Ver mais interesses ({len(INTERESSES) - N_BASE})",
+                    key="btn_mais",
+                    width="stretch",
+                    on_click=alternar_mais,
                 )
                 if excesso:
                     st.warning(f"Você marcou {n}. Deixe no máximo {MAX_INTERESSES}: desmarque algumas para ver o resultado.")
@@ -483,6 +588,33 @@ if pagina == PAG_DESCOBRIR:
         elif not resultado:
             st.warning("Nenhum curso encontrado nessas cidades. Desligue o filtro de cidades ou escolha outras.")
         else:
+            if st.session_state.arrastar:
+                with st.container(key="bloco_arrastar"):
+                    fila = st.session_state.fila
+                    pend = [k for k in fila if k not in st.session_state.votos]
+                    feitos = len(fila) - len(pend)
+                    html('<div class="sec" style="font-size:1.25rem;margin:0 0 .4rem 0">🃏 Modo arrastar</div>')
+                    if pend:
+                        cur = CURSO_POR_CHAVE[pend[0]]
+                        emoji_a, cor_a = estilo_area(cur["area"])
+                        st.progress(feitos / max(1, len(fila)), text=f"{feitos} de {len(fila)} cursos")
+                        html(
+                            f"""
+                            <div class="rc" style="--c:{cor_a};background:#fff;border-radius:18px;margin:.3rem 0 .8rem 0;box-shadow:0 8px 20px -14px rgba(11,42,85,.5)">
+                            <div class="rc-area">{emoji_a} {esc(cur['area'])}</div>
+                            <div class="rc-title">{esc(cur['nome'])}</div>
+                            <div><span class="badge">{esc(cur['grau'])}</span></div>
+                            <div class="rc-why">{esc(cur['faz'])}</div>
+                            </div>
+                            """
+                        )
+                        v1, v2, v3 = st.columns(3)
+                        v1.button("👎 Não curti", key=f"v_n_{pend[0]}", width="stretch", on_click=votar, args=(pend[0], -1))
+                        v2.button("🤔 Talvez", key=f"v_t_{pend[0]}", width="stretch", on_click=votar, args=(pend[0], 0))
+                        v3.button("👍 Curti", key=f"v_c_{pend[0]}", type="primary", width="stretch", on_click=votar, args=(pend[0], 1))
+                    else:
+                        st.success("Acabaram os cursos! Veja abaixo como o seu resultado mudou.")
+                    st.button("Concluir", key="btn_concluir", width="stretch", on_click=parar_arrastar)
             html(f'<div class="sec" id="resultado"><img src="data:image/png;base64,{img64("sigma.png", 80)}" alt="">Seus cursos mais compatíveis</div>')
             for i, c in enumerate(resultado[:TOP_N], start=1):
                 emoji, cor = estilo_area(c["area"])
@@ -524,24 +656,30 @@ if pagina == PAG_DESCOBRIR:
                 if st.session_state.refino and not st.session_state.refinando:
                     st.success("Resultado refinado com as suas respostas.")
                 if not st.session_state.refinando:
-                    if st.session_state.refino:
-                        r1, r2 = st.columns(2)
-                        r1.button(
-                            "🎯 Refazer as 3 perguntas",
+                    if st.session_state.votos and not st.session_state.arrastar:
+                        st.success("Resultado ajustado pelos seus votos no modo arrastar.")
+                    st.button(
+                        "🎯 Quero um resultado mais preciso" if not st.session_state.refino else "🎯 Refazer as 3 perguntas",
+                        key="btn_refinar",
+                        width="stretch",
+                        on_click=lambda: st.session_state.update(refinando=True),
+                    )
+                    if not st.session_state.arrastar:
+                        st.button(
+                            "🃏 Refinar arrastando" if not st.session_state.votos else "🃏 Continuar arrastando",
+                            key="btn_arrastar",
                             width="stretch",
-                            on_click=lambda: st.session_state.update(refinando=True),
+                            on_click=iniciar_arrastar,
                         )
-                        r2.button(
+                    if st.session_state.refino:
+                        st.button(
                             "Desfazer refinamento",
+                            key="btn_desfazer_refino",
                             width="stretch",
                             on_click=lambda: st.session_state.update(refino={}),
                         )
-                    else:
-                        st.button(
-                            "🎯 Quero um resultado mais preciso",
-                            width="stretch",
-                            on_click=lambda: st.session_state.update(refinando=True),
-                        )
+                    if st.session_state.votos:
+                        st.button("Desfazer votos", key="btn_desfazer_votos", width="stretch", on_click=limpar_votos)
                 else:
                     with st.form("refinar", border=False):
                         st.markdown("**3 perguntas rápidas** (pode deixar alguma em branco)")
@@ -591,31 +729,84 @@ elif pagina == PAG_CURSOS:
     n_ofertas = sum(len(c["campi"]) for c in CURSOS)
     html(f'<div class="sec"><img src="data:image/png;base64,{img64("sigma.png", 80)}" alt="">Cursos da UEPB</div>')
     st.markdown(f"**{len(CURSOS)} cursos** em **{n_ofertas} ofertas** nos 8 campi.")
-    busca = st.text_input("Buscar curso", placeholder="Ex.: computação, saúde, professor...")
-    f1, f2, f3 = st.columns(3)
-    area_f = f1.selectbox("Área", ["Todas"] + AREAS)
-    grau_f = f2.selectbox("Tipo", ["Todos"] + GRAUS)
-    cid_f = f3.selectbox("Cidade", ["Todas"] + CIDADES)
+    aba_cat, aba_cmp, aba_mapa = st.tabs(["📖 Catálogo", "⚖️ Comparar", "🗺️ Mapa dos campi"])
 
-    def passa(c):
-        if area_f != "Todas" and c["area"] != area_f:
-            return False
-        if grau_f != "Todos" and c["grau"] != grau_f:
-            return False
-        if cid_f != "Todas" and cid_f not in c["campi"]:
-            return False
-        if busca:
-            alvo = " ".join([c["nome"], c["faz"], c["estuda"], " ".join(c["carreiras"])]).lower()
-            return busca.lower() in alvo
-        return True
+    # ----- Catálogo -----
+    with aba_cat:
+        busca = st.text_input("Buscar curso", placeholder="Ex.: computação, saúde, professor...")
+        f1, f2, f3 = st.columns(3)
+        area_f = f1.selectbox("Área", ["Todas"] + AREAS)
+        grau_f = f2.selectbox("Tipo", ["Todos"] + GRAUS)
+        cid_f = f3.selectbox("Cidade", ["Todas"] + CIDADES)
 
-    filtrados = sorted((c for c in CURSOS if passa(c)), key=lambda c: (c["nome"], c["grau"]))
-    st.caption(f"{len(filtrados)} curso(s) encontrado(s)")
-    for c in filtrados:
-        emoji, _ = estilo_area(c["area"])
-        with st.expander(f"{emoji} {c['nome']} • {c['grau']}"):
-            st.caption(c["area"])
-            mostrar_curso(c, {cid_f: 1} if cid_f != "Todas" else None)
+        def passa(c):
+            if area_f != "Todas" and c["area"] != area_f:
+                return False
+            if grau_f != "Todos" and c["grau"] != grau_f:
+                return False
+            if cid_f != "Todas" and cid_f not in c["campi"]:
+                return False
+            if busca:
+                alvo = " ".join([c["nome"], c["faz"], c["estuda"], " ".join(c["carreiras"])]).lower()
+                return busca.lower() in alvo
+            return True
+
+        filtrados = sorted((c for c in CURSOS if passa(c)), key=lambda c: (c["nome"], c["grau"]))
+        st.caption(f"{len(filtrados)} curso(s) encontrado(s)")
+        for c in filtrados:
+            emoji, _ = estilo_area(c["area"])
+            with st.expander(f"{emoji} {c['nome']} • {c['grau']}"):
+                st.caption(c["area"])
+                mostrar_curso(c, {cid_f: 1} if cid_f != "Todas" else None)
+
+    # ----- Comparar 2 cursos -----
+    with aba_cmp:
+        st.caption("Escolha dois cursos para ver lado a lado.")
+        chaves = sorted(CURSO_POR_CHAVE, key=lambda k: (CURSO_POR_CHAVE[k]["nome"], CURSO_POR_CHAVE[k]["grau"]))
+        rotulos = {k: f"{CURSO_POR_CHAVE[k]['nome']} ({CURSO_POR_CHAVE[k]['grau']})" for k in chaves}
+        topo_k = [chave(c) for c in resultado[:2]]
+        ini1 = chaves.index(topo_k[0]) if len(topo_k) > 0 else 0
+        ini2 = chaves.index(topo_k[1]) if len(topo_k) > 1 else 1
+        s1, s2 = st.columns(2)
+        k1 = s1.selectbox("Curso A", chaves, index=ini1, format_func=rotulos.get, key="cmp_a")
+        k2 = s2.selectbox("Curso B", chaves, index=ini2, format_func=rotulos.get, key="cmp_b")
+        afin = {chave(c): c["afinidade"] for c in resultado}
+        for col, k in zip(st.columns(2), (k1, k2)):
+            c = CURSO_POR_CHAVE[k]
+            emoji, cor = estilo_area(c["area"])
+            with col:
+                with st.container(border=True):
+                    pct = afin.get(k)
+                    selo = f'<span class="badge top">{pct}% com você</span>' if pct is not None else ""
+                    html(
+                        f"""
+                        <div class="rc" style="--c:{cor};padding:6px 4px 6px 14px">
+                        <div class="rc-area">{emoji} {esc(c['area'])}</div>
+                        <div class="rc-title">{esc(c['nome'])}</div>
+                        <div><span class="badge">{esc(c['grau'])}</span>{selo}</div>
+                        </div>
+                        """
+                    )
+                    mostrar_curso(c)
+        if not resultado:
+            st.caption("Dica: faça a escolha de interesses na página Descobrir para ver a compatibilidade de cada curso com você.")
+
+    # ----- Mapa -----
+    with aba_mapa:
+        por_cidade = {cid: [c for c in CURSOS if cid in c["campi"]] for cid in CIDADES}
+        df = pd.DataFrame(
+            [
+                {"cidade": cid, "lat": COORDS[cid][0], "lon": COORDS[cid][1], "tamanho": 3500 + 450 * len(por_cidade[cid])}
+                for cid in CIDADES
+            ]
+        )
+        st.map(df, latitude="lat", longitude="lon", size="tamanho", color="#1F6BFF", zoom=7, height=380)
+        st.caption("Quanto maior o círculo, mais cursos o campus oferece.")
+        cid_m = st.selectbox("Ver os cursos de um campus", CIDADES, format_func=lambda cid: f"{cid} ({CAMPUS[cid]}) • {len(por_cidade[cid])} cursos")
+        for c in sorted(por_cidade[cid_m], key=lambda c: (c["nome"], c["grau"])):
+            emoji, _ = estilo_area(c["area"])
+            with st.expander(f"{emoji} {c['nome']} • {c['grau']} • {c['campi'][cid_m]}"):
+                mostrar_curso(c, {cid_m: 1})
 
 # ----------------------------------------------------------------------------
 # Página 3: chat com o VANDER IA (a IA só entra aqui e na leitura da frase livre)

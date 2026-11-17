@@ -27,6 +27,7 @@ DIM_NOMES = {
 }
 
 MAX_INTERESSES = 5
+N_BASE = 16  # os primeiros 16 interesses aparecem sempre; o resto fica em "Ver mais interesses"
 MIN_RECOMENDADO = 3
 
 # id -> emoji, rótulo, pontos por dimensão, cursos afins (ganham um bônus, porque as 8 dimensões
@@ -145,6 +146,90 @@ INTERESSES = {
         "afins": ['Letras Inglês', 'Letras Espanhol', 'Relações Internacionais'],
         "palavras": ["idioma", "ingles", "espanhol", "lingua", "traduc", "viajar", "intercambio", "estrangeir"],
     },
+    "mente": {
+        "emoji": "🧠", "rotulo": "Mente e comportamento",
+        "cor": "#7C3AED",
+        "vetor": {"H": 2, "I": 2, "S": 1},
+        "afins": ["Psicologia"],
+        "palavras": ["mente", "comportament", "psicolog", "emocao", "emocoes", "terapia", "ansiedade", "cerebro"],
+    },
+    "comunidade": {
+        "emoji": "🤝", "rotulo": "Ajudar a comunidade",
+        "cor": "#EA580C",
+        "vetor": {"S": 3, "H": 1},
+        "afins": ["Serviço Social", "Sociologia", "Pedagogia"],
+        "palavras": ["comunidade", "voluntar", "ong", "ajudar", "desigualdade", "pobreza", "direitos"],
+    },
+    "politica": {
+        "emoji": "🏛️", "rotulo": "Política e governo",
+        "cor": "#1D4ED8",
+        "vetor": {"E": 2, "C": 1, "S": 1, "I": 1},
+        "afins": ["Relações Internacionais", "Direito", "Sociologia"],
+        "palavras": ["politic", "governo", "diplomac", "eleic", "relacoes internacionais", "onu", "estado"],
+    },
+    "cidades": {
+        "emoji": "🏗️", "rotulo": "Cidades e obras",
+        "cor": "#B45309",
+        "vetor": {"R": 3, "C": 1},
+        "afins": ["Engenharia Civil", "Engenharia Sanitária e Ambiental", "Geografia"],
+        "palavras": ["cidade", "obra", "predio", "casa", "urban", "arquitet", "infraestrutura", "ponte", "estrada"],
+    },
+    "energia": {
+        "emoji": "⚡", "rotulo": "Energia e sustentabilidade",
+        "cor": "#CA8A04",
+        "vetor": {"R": 2, "N": 2, "I": 1},
+        "afins": ["Tecnologia em Sistemas de Energias Renováveis", "Engenharia Sanitária e Ambiental", "Física"],
+        "palavras": ["energia", "solar", "eolic", "sustent", "renovav", "eletric"],
+    },
+    "agua": {
+        "emoji": "💧", "rotulo": "Água e saneamento",
+        "cor": "#0284C7",
+        "vetor": {"N": 3, "R": 1, "H": 1},
+        "afins": ["Engenharia Sanitária e Ambiental", "Engenharia Civil", "Química Industrial"],
+        "palavras": ["agua", "saneamento", "esgoto", "rio", "seca", "residuo", "lixo", "reciclag"],
+    },
+    "quimica": {
+        "emoji": "🧪", "rotulo": "Química e laboratório",
+        "cor": "#9333EA",
+        "vetor": {"I": 3, "R": 1},
+        "afins": ["Química", "Química Industrial", "Farmácia"],
+        "palavras": ["quimic", "reacao", "laborat", "substanc", "medicamento", "industria"],
+    },
+    "matematica": {
+        "emoji": "🧮", "rotulo": "Matemática e lógica",
+        "cor": "#0F766E",
+        "vetor": {"I": 2, "C": 3},
+        "afins": ["Matemática", "Estatística", "Ciência da Computação", "Física"],
+        "palavras": ["matematic", "logica", "equacao", "problema", "calculo", "raciocinio", "enigma"],
+    },
+    "jogos": {
+        "emoji": "🎮", "rotulo": "Jogos e criação digital",
+        "cor": "#DB2777",
+        "vetor": {"R": 2, "A": 2, "I": 1},
+        "afins": ["Ciência da Computação", "Tecnologia em Análise e Desenvolvimento de Sistemas"],
+        "palavras": ["jogo", "game", "animacao", "aplicativo", "app ", "desenvolv", "criar site"],
+    },
+    "redes": {
+        "emoji": "📱", "rotulo": "Redes sociais e conteúdo",
+        "cor": "#E11D48",
+        "vetor": {"A": 3, "E": 1},
+        "afins": ["Jornalismo"],
+        "palavras": ["rede social", "instagram", "tiktok", "youtube", "influenc", "conteudo", "video", "edicao"],
+    },
+    "agro": {
+        "emoji": "🚜", "rotulo": "Alimentos e agricultura",
+        "cor": "#4D7C0F",
+        "vetor": {"N": 3, "R": 1, "E": 1},
+        "afins": ["Agronomia", "Agroecologia"],
+        "palavras": ["agricult", "alimento", "colheita", "fazenda", "plantio", "comida", "agro", "produzir"],
+    },
+    "inovar": {
+        "emoji": "🚀", "rotulo": "Inovação e empreender",
+        "cor": "#4338CA",
+        "vetor": {"E": 3, "I": 1, "R": 1},
+        "afins": ["Administração", "Tecnologia em Análise e Desenvolvimento de Sistemas"],
+        "palavras": ["inovac", "startup", "empreend", "ideia", "criar empresa", "tecnolog"],
+    },
 }
 
 
@@ -195,8 +280,13 @@ REFINAR = [
 ]
 
 
-def vetor_total(interesses: list[str], refino: dict | None = None) -> dict:
-    """Soma os pontos dos interesses marcados e das respostas do refinamento em cada dimensão."""
+def chave(curso: dict) -> str:
+    """Identificador único do curso (o mesmo nome pode ter bacharelado e licenciatura)."""
+    return f"{curso['nome']}|{curso['grau']}"
+
+
+def vetor_total(interesses: list[str], refino: dict | None = None, votos: dict | None = None) -> dict:
+    """Soma os pontos dos interesses, do refinamento e dos votos do modo arrastar em cada dimensão."""
     v = {d: 0.0 for d in DIMS}
     for i in interesses:
         for dim, pts in INTERESSES[i]["vetor"].items():
@@ -205,6 +295,15 @@ def vetor_total(interesses: list[str], refino: dict | None = None) -> dict:
         resp = (refino or {}).get(q["id"])
         for dim, pts in q["opcoes"].get(resp, {}).items():
             v[dim] += pts
+    # Modo arrastar: curtir puxa o perfil para o curso; não curtir afasta um pouco.
+    for c in CURSOS:
+        voto = (votos or {}).get(chave(c))
+        if voto:
+            peso = 0.6 if voto > 0 else -0.25
+            for dim, p in zip(DIMS, c["perfil"]):
+                v[dim] += peso * p
+    for dim in DIMS:
+        v[dim] = max(0.0, v[dim])
     return v
 
 
@@ -222,7 +321,7 @@ def _afim(curso: dict, i: str) -> bool:
     return curso["nome"] in INTERESSES[i]["afins"]
 
 
-def ranking(vetor: dict, interesses=(), cidades=None, so_cidades=False):
+def ranking(vetor: dict, interesses=(), cidades=None, so_cidades=False, votos=None):
     """Lista de cursos ordenada por compatibilidade (0 a 100)."""
     u = [vetor[d] for d in DIMS]
     resultado = []
@@ -230,12 +329,17 @@ def ranking(vetor: dict, interesses=(), cidades=None, so_cidades=False):
         nas_cidades = {k: t for k, t in c["campi"].items() if k in cidades} if cidades else {}
         if cidades and so_cidades and not nas_cidades:
             continue
+        voto = (votos or {}).get(chave(c), 0)
+        if voto < 0:
+            continue  # cursos que a pessoa descartou no modo arrastar saem do resultado
         sim = _cos(u, list(c["perfil"]))
         # Cosseno ao quadrado: separa melhor os cursos e quase nunca chega a 100%.
         pct = 100.0 * sim * sim
         pct += min(BONUS_AFIM_MAX, BONUS_AFIM * sum(_afim(c, i) for i in interesses))
         if nas_cidades:
             pct += 2
+        if voto > 0:
+            pct += 4
         # Escala 0,9 para o topo não ficar todo em 99% e os cursos continuarem distinguíveis.
         pct = min(99.0, pct * 0.9)
         resultado.append({**c, "afinidade": round(pct), "nas_cidades": nas_cidades})
