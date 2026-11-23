@@ -1,88 +1,16 @@
-# 🤖 Orientador de Cursos UEPB • VANDER IA
+# UEPB Orienta (versão site estático)
 
-App em Streamlit que ajuda a descobrir qual curso de graduação da **UEPB** combina com você:
+Site de orientação de cursos da UEPB com o VANDER IA. HTML, CSS e JavaScript puros, sem build e sem servidor.
+Funciona: interesses, cidades, frase livre, refinar com 3 perguntas, arrastar para votar, detalhes do curso, catálogo, comparar, mapa, imagem para compartilhar. O chat com IA é opcional (veja `worker/LEIA-ME.md`).
 
-- **Tela única por toque**: a pessoa marca de 3 a 5 interesses (botões com emoji), escolhe a cidade se quiser e vê os 5 cursos mais compatíveis na hora, com uma linha de "por que combina". O ranking é calculado localmente, sem gastar API.
-- **Refinar (opcional)**: o botão "Quero um resultado mais preciso" abre 3 perguntas rápidas que ajustam o ranking.
-- **Frase livre (opcional)**: a pessoa conta em uma frase o que quer e o VANDER IA converte em interesses (chamada curta e barata; sem IA, usa palavras-chave).
-- **Catálogo completo**: 38 cursos em 64 ofertas nos 8 campi, com o que cada curso faz, o que se estuda, onde atuar e turnos.
-- **Chat com o VANDER IA** para explicar o resultado e tirar dúvidas.
+## Publicar de graça
+**GitHub Pages:** envie esta pasta para um repositório, depois Settings > Pages > Deploy from branch > `main` / root. O endereço sai em `https://USUARIO.github.io/REPO/`.
+**Cloudflare Pages:** Workers & Pages > Create > Pages > Upload assets, arraste a pasta.
+**Netlify:** app.netlify.com/drop, arraste a pasta.
 
-O resultado e o catálogo funcionam **sem nenhuma chave**. A IA só entra no chat e na leitura da frase livre.
+## Personalizar
+- `config.js`: link do processo seletivo, endereço do chat, nome do site na imagem.
+- `extras.js`: nota de corte, mercado, depoimento e link por curso. Só preencha com dados reais e cite a fonte.
+- `js/data.js`: cursos, interesses e perguntas. A lógica de cálculo está em `js/core.js` (mesmo ranking do app Streamlit).
 
-## Estrutura
-
-```
-app.py              interface (páginas Descobrir, Cursos, VANDER IA)
-orientador.py       interesses, perguntas de refinamento e cálculo de compatibilidade
-cursos_uepb.py      catálogo de cursos (edite aqui para corrigir ou adicionar cursos)
-agente.py           conexão com o VANDER IA (chat e leitura da frase livre; plano B com Gemini)
-assets/             logo, mascote e avatar
-.streamlit/config.toml   cores do tema
-```
-
-## Conectar o VANDER IA (Claude)
-
-O VANDER IA roda sobre o Claude, com a persona e as regras definidas em `agente.py`.
-
-1. Acesse https://console.anthropic.com, faça login e vá em **API keys > Create key**. Copie a chave (`sk-ant-...`): ela só aparece uma vez.
-2. Em **Billing**, adicione créditos (a API é paga por uso, separada de qualquer assinatura do Claude).
-3. Defina um **limite mensal de gasto** no Console, por segurança.
-4. Cole a chave em **Secrets** (Streamlit Cloud: *Advanced settings > Secrets*; local: `.streamlit/secrets.toml`):
-
-```toml
-ANTHROPIC_API_KEY = "sk-ant-..."
-```
-
-Nunca coloque a chave no código nem no GitHub. O modelo padrão é o `claude-haiku-5-5` (o mais barato);
-para trocar, defina `ANTHROPIC_MODEL` nos Secrets.
-
-O app limita cada sessão a 20 perguntas para proteger o seu crédito (ajuste `LIMITE_MSGS` em `app.py`).
-
-**Alternativas** (veja `secrets.toml.example`): endpoint próprio via `VANDER_API_URL` ou Gemini gratuito via `GEMINI_API_KEY`.
-A prioridade é: Claude, depois endpoint próprio, depois Gemini.
-
-## Rodar localmente
-
-```bash
-pip install -r requirements.txt
-mkdir -p .streamlit && cp secrets.toml.example .streamlit/secrets.toml   # edite
-streamlit run app.py
-```
-
-## Publicar no Streamlit Community Cloud
-
-1. Suba **todos os arquivos e pastas** deste projeto para a raiz de um repositório no GitHub (inclua `assets/` e `.streamlit/config.toml`; **não** suba `secrets.toml`).
-2. Em https://share.streamlit.io clique em **Create app**, escolha o repositório, a branch e o arquivo `app.py`.
-3. Em **Advanced settings > Secrets**, cole as chaves acima e clique em **Deploy**.
-
-## Sobre os dados
-
-- A lista de cursos, campi e turnos vem da página da Pró-reitoria de Graduação da UEPB
-  (https://uepb.edu.br/prograd/ensino/cursos-de-graduacao-2/). Turnos e ofertas mudam: confirme no site da UEPB.
-- As descrições dos cursos são resumos gerais, não o projeto pedagógico oficial.
-- A compatibilidade é uma estimativa por perfil (interesses, preferências e valores), uma orientação inicial e não uma sentença.
-
-
-Para mudar os botões de interesse (emoji, nome, pesos e cursos afins), edite `INTERESSES` em `orientador.py`.
-
-
-## Novidades da versão com mais opções
-
-- **28 interesses:** 16 aparecem sempre e 12 ficam em "Ver mais interesses". Para mudar emoji, nome, cor, pesos e cursos afins, edite `INTERESSES` em `orientador.py`.
-- **Um dia na vida:** rotina típica de cada curso, em `dia_a_dia.py` (um texto "aluno" e um "prof" por curso).
-- **Comparar 2 cursos** e **Mapa dos campi:** abas dentro de "Cursos".
-- **Modo arrastar:** 👍 / 🤔 / 👎 sobre os 10 melhores cursos. Curtir aproxima o perfil do curso e descartar tira o curso do resultado.
-- **Link do processo seletivo:** a constante `LINK_UEPB` em `app.py` aponta para o site da UEPB. Troque pelo endereço exato da página de inscrição.
-- **Dados opcionais por curso:** edite `extras.json` para mostrar nota de corte, mercado de trabalho, depoimento real ou um link próprio. Só aparece o que você preencher. Exemplo:
-
-```json
-{
-  "Ciência da Computação|Bacharelado": {
-    "nota_corte": "texto com a nota e o ano, citando a fonte",
-    "mercado": "texto com dados de uma fonte oficial",
-    "depoimento": {"texto": "frase autorizada pela pessoa", "autor": "Nome, egresso 2024"},
-    "link": "https://..."
-  }
-}
-```
+Para testar local: `python -m http.server 8000` e abra http://localhost:8000. O mapa e as fontes funcionam sem internet, exceto os blocos do mapa (Esri).
